@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect } from "react";
@@ -18,7 +17,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { RichTextEditor } from ".";
-import ImageUpload from "./ImageUpload"; // Using the new ImageUpload component
+import ImageUpload from "./ImageUpload";
 import { handleDelete, handleUpload } from ".";
 import {
   Select,
@@ -45,6 +44,33 @@ export default function EntityForm({
   // State for new image files
   const [imageFile, setImageFile] = useState(null);
   const [heroImageFile, setHeroImageFile] = useState(null);
+
+  // State for image metadata
+  const [imageTitle, setImageTitle] = useState(
+    entityType === "category" 
+      ? initialData?.homeImage?.title || "" 
+      : initialData?.image?.title || ""
+  );
+  const [imageAlt, setImageAlt] = useState(
+    entityType === "category" 
+      ? initialData?.homeImage?.alt || "" 
+      : initialData?.image?.alt || ""
+  );
+  const [imageCaption, setImageCaption] = useState(
+    entityType === "category" 
+      ? initialData?.homeImage?.caption || "" 
+      : initialData?.image?.caption || ""
+  );
+
+  const [heroImageTitle, setHeroImageTitle] = useState(
+    initialData?.heroImage?.title || ""
+  );
+  const [heroImageAlt, setHeroImageAlt] = useState(
+    initialData?.heroImage?.alt || ""
+  );
+  const [heroImageCaption, setHeroImageCaption] = useState(
+    initialData?.heroImage?.caption || ""
+  );
 
   const [longDescription, setLongDescription] = useState(
     initialData?.longDescription || ""
@@ -103,10 +129,10 @@ export default function EntityForm({
         if (initialData?.image?.public_id) {
           await handleDelete(initialData.image.public_id);
         }
-        newImageData = await handleUpload(imageFile); // ✅ changed
+        newImageData = await handleUpload(imageFile);
       } else if (image === null && initialData?.image?.public_id) {
         // Handle case where image was removed without replacement
-        await handleDelete(initialData.image.public_id); // ✅ changed
+        await handleDelete(initialData.image.public_id);
         newImageData = null;
       }
 
@@ -115,22 +141,44 @@ export default function EntityForm({
         if (initialData?.heroImage?.public_id) {
           await handleDelete(initialData.heroImage.public_id);
         }
-        newHeroImageData = await handleUpload(heroImageFile); // ✅ changed
+        newHeroImageData = await handleUpload(heroImageFile);
       } else if (heroImage === null && initialData?.heroImage?.public_id) {
-        await handleDelete(initialData.heroImage.public_id); // ✅ changed
+        await handleDelete(initialData.heroImage.public_id);
         newHeroImageData = null;
       }
 
+      // Add metadata to image objects
+      if (newImageData) {
+        newImageData = {
+          ...newImageData,
+          title: imageTitle,
+          alt: imageAlt,
+          caption: imageCaption,
+        };
+      }
+
+      if (newHeroImageData) {
+        newHeroImageData = {
+          ...newHeroImageData,
+          title: heroImageTitle,
+          alt: heroImageAlt,
+          caption: heroImageCaption,
+        };
+      }
 
       const formData = {
         ...data,
         longDescription,
         ...(entityType === "category"
-          ? { homeImage: newImageData, heroImage: newHeroImageData } // ✅ FIX
-          : { image: newImageData }), // ✅ Products stay same
+          ? { 
+              homeImage: newImageData, 
+              heroImage: newHeroImageData 
+            }
+          : { 
+              image: newImageData 
+            }),
         ...(entityType === "products" && { categorySlug }),
       };
-
 
       const res = await fetch(
         initialData?._id
@@ -273,41 +321,107 @@ export default function EntityForm({
             )}
           </div>
         )}
+        
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-          <div className="space-y-2">
-            <Label>
-              {entityType === "category" ? "Main Image" : "Product Image"}
-            </Label>
-            <ImageUpload
-              initialImageUrl={
-                entityType === "category"
-                  ? initialData?.homeImage?.url || image?.url || image
-                  : initialData?.image?.url || image?.url || image
-              }
-              onFileChange={(file) => {
-                setImageFile(file);
-                if (!file) setImage(null);
-              }}
-            />
-
-            <p className="text-xs text-muted-foreground">
-              Recommended size: 800x600px
-            </p>
-          </div>
-
-          {entityType === "category" && (
+          <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Hero Image</Label>
+              <Label>
+                {entityType === "category" ? "Main Image" : "Product Image"}
+              </Label>
               <ImageUpload
-                initialImageUrl={heroImage?.url || heroImage}
+                initialImageUrl={
+                  entityType === "category"
+                    ? initialData?.homeImage?.url || image?.url || image
+                    : initialData?.image?.url || image?.url || image
+                }
                 onFileChange={(file) => {
-                  setHeroImageFile(file);
-                  if (!file) setHeroImage(null);
+                  setImageFile(file);
+                  if (!file) setImage(null);
                 }}
               />
               <p className="text-xs text-muted-foreground">
-                Recommended size: 1920x1080px
+                Recommended size: 800x600px
               </p>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="imageTitle">Image Title</Label>
+              <Input
+                id="imageTitle"
+                value={imageTitle}
+                onChange={(e) => setImageTitle(e.target.value)}
+                placeholder="Enter image title"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="imageAlt">Alt Text</Label>
+              <Input
+                id="imageAlt"
+                value={imageAlt}
+                onChange={(e) => setImageAlt(e.target.value)}
+                placeholder="Enter alt text for accessibility"
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="imageCaption">Caption</Label>
+              <Textarea
+                id="imageCaption"
+                value={imageCaption}
+                onChange={(e) => setImageCaption(e.target.value)}
+                placeholder="Enter image caption"
+                rows={2}
+              />
+            </div>
+          </div>
+
+          {entityType === "category" && (
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label>Hero Image</Label>
+                <ImageUpload
+                  initialImageUrl={heroImage?.url || heroImage}
+                  onFileChange={(file) => {
+                    setHeroImageFile(file);
+                    if (!file) setHeroImage(null);
+                  }}
+                />
+                <p className="text-xs text-muted-foreground">
+                  Recommended size: 1920x1080px
+                </p>
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="heroImageTitle">Hero Image Title</Label>
+                <Input
+                  id="heroImageTitle"
+                  value={heroImageTitle}
+                  onChange={(e) => setHeroImageTitle(e.target.value)}
+                  placeholder="Enter hero image title"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="heroImageAlt">Hero Image Alt Text</Label>
+                <Input
+                  id="heroImageAlt"
+                  value={heroImageAlt}
+                  onChange={(e) => setHeroImageAlt(e.target.value)}
+                  placeholder="Enter alt text for accessibility"
+                />
+              </div>
+              
+              <div className="space-y-2">
+                <Label htmlFor="heroImageCaption">Hero Image Caption</Label>
+                <Textarea
+                  id="heroImageCaption"
+                  value={heroImageCaption}
+                  onChange={(e) => setHeroImageCaption(e.target.value)}
+                  placeholder="Enter hero image caption"
+                  rows={2}
+                />
+              </div>
             </div>
           )}
         </div>
